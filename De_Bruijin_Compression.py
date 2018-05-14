@@ -35,18 +35,10 @@ class Edge:
     def coverage_increment(self):
         self.coverage += 1
 
-    def __copy__(self):
-        new = Edge(self.k1, self.k2)
-        new.seq = self.seq
-        new.__dict__.update(self.__dict__)
-        return new
-
     def merge_next(self, next):
-#        new = Edge(self.k1, self.k2)
         self.seq +=next.seq[k:]
         self.coverage = (self.coverage * len(self.seq) + next.coverage * len(next.seq)) \
                    / (len(self.seq) + len(next.seq))
- #       return new
 
     def merge_prev(self, prev):
         new = self.__copy__()
@@ -90,20 +82,6 @@ class Graph:
                 self.vertices[current_vertex].out_edges[next_vertex][0].calc_coverage(
                     self.vertices[current_vertex].coverage, self.vertices[next_vertex].coverage)
 
-#    def merge_vertices(self, vertex, prev, next):
-#        if len([self.vertices[prev].out_edges.keys()]) == 1 and len([self.vertices[next].in_edges.keys()]) == 1:
-#            self.prev, self.next = prev, next
-#            self.vertices[self.prev].out_edges[self.next] = [Edge(self.prev, self.next)]
-#            self.vertices[self.next].in_edges[self.prev] = [Edge(self.prev, self.next)]
-#            new_seq = self.vertices[vertex].in_edges[self.prev][0].seq + self.vertices[vertex].out_edges[self.next][0].seq[k:]
-#            self.vertices[self.prev].out_edges[self.next][0].seq, self.vertices[self.next].in_edges[self.prev][0].seq = new_seq, new_seq
-#            self.vertices[self.prev].out_edges[self.next][0].merge_next(self.vertices[self.next].in_edges[self.prev][0])
-#            self.vertices[self.next].in_edges[self.prev][0].merge_prev(self.vertices[self.prev].out_edges[self.next][0])
-#
-#        del self.vertices[vertex]
-#        del self.vertices[self.prev].out_edges[vertex]
-#        del self.vertices[self.next].in_edges[vertex]
-
     def merge_vertices(self, vertex, prev, next):
         if (len(list(self.vertices[vertex].out_edges.keys()))) == 1 and (len(list(self.vertices[vertex].in_edges.keys())) == 1):
             self.vertices[prev].out_edges[next] = [Edge(prev, next)]
@@ -121,14 +99,19 @@ class Graph:
 
     def compress(self):
         dummy = self.vertices.copy()
-        for vertex in dummy.keys():
-            try:
-                prev, next = list(self.vertices[vertex].in_edges.keys())[0], list(self.vertices[vertex].out_edges.keys())[0]
-                self.merge_vertices(vertex, prev, next)
-            except:
-                continue
-        dummy.update()
-
+        while True:
+            before = len(dummy)
+            for vertex in dummy.keys():
+                try:
+                    prev, next = list(self.vertices[vertex].in_edges.keys())[0], list(self.vertices[vertex].out_edges.keys())[0]
+                    self.merge_vertices(vertex, prev, next)
+                except:
+                    continue
+            dummy.update()
+            after = len(dummy)
+            if before == after:
+                break
+                
     def get_contigs(self, dest):
         i = 1
         contigs = []
