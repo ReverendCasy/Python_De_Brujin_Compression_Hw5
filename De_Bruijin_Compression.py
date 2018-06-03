@@ -41,11 +41,9 @@ class Edge:
                    / (len(self.seq) + len(next.seq))
 
     def merge_prev(self, prev):
-        new = self.__copy__()
-        new.seq = prev.seq + self.seq[k:]
-        new.coverage = (self.coverage * len(self.seq) + prev.coverage * len(prev.seq)) \
+        self.seq = prev.seq + self.seq[k:]
+        self.coverage = (self.coverage * len(self.seq) + prev.coverage * len(prev.seq)) \
                    / (len(self.seq) + len(prev.seq))
-        return new
 
 class Graph:
 
@@ -83,35 +81,40 @@ class Graph:
                     self.vertices[current_vertex].coverage, self.vertices[next_vertex].coverage)
 
     def merge_vertices(self, vertex, prev, next):
-        if (len(list(self.vertices[vertex].out_edges.keys()))) == 1 and (len(list(self.vertices[vertex].in_edges.keys())) == 1):
-            self.vertices[prev].out_edges[next] = [Edge(prev, next)]
-            self.vertices[next].in_edges[prev] = [Edge(prev, next)]
-            new_seq = self.vertices[vertex].in_edges[prev][0].seq + self.vertices[vertex].out_edges[next][0].seq[k:]
-            self.vertices[prev].out_edges[next][0].seq, self.vertices[next].in_edges[prev][0].seq = new_seq, new_seq
-            self.vertices[prev].out_edges[next][0].merge_next(self.vertices[next].in_edges[prev][0])
-            self.vertices[next].in_edges[prev][0].merge_prev(self.vertices[prev].out_edges[next][0])
+        self.vertices[prev].out_edges[next] = [Edge(prev, next)]
+        self.vertices[next].in_edges[prev] = [Edge(prev, next)]
+        self.vertices[prev].out_edges[next][0].merge_next(self.vertices[next].in_edges[prev][0])
+        self.vertices[next].in_edges[prev][0].merge_prev(self.vertices[prev].out_edges[next][0])
 
         del self.vertices[vertex]
         del self.vertices[prev].out_edges[vertex]
         del self.vertices[next].in_edges[vertex]
 
 
-
     def compress(self):
-        dummy = self.vertices.copy()
-        while True:
-            before = len(dummy)
-            for vertex in dummy.keys():
-                try:
-                    prev, next = list(self.vertices[vertex].in_edges.keys())[0], list(self.vertices[vertex].out_edges.keys())[0]
-                    self.merge_vertices(vertex, prev, next)
-                except:
-                    continue
-            dummy.update()
-            after = len(dummy)
-            if before == after:
-                break
-                
+        blacklist = []
+        for vertex in self.vertices.keys():
+            if (len(list(self.vertices[vertex].out_edges.keys()))) == 1 and (len(list(self.vertices[vertex].in_edges.keys())) == 1):
+                blacklist.append(vertex)
+        for vertex in blacklist:
+            if vertex in self.vertices.keys() and len(self.vertices) > 2:
+                prev, next = list(self.vertices[vertex].in_edges.keys())[0], list(self.vertices[vertex].out_edges.keys())[0]
+                self.merge_vertices(vertex, prev, next)
+
+    def cut(self, baseline):
+        self.to_cut = [vertex for vertex in self.vertices.keys() if ((len(self.vertices[vertex].out_edges.keys()) == 0) and (len(self.vertices[vertex].in_edges.keys()) == 1))
+                       or ((len(self.vertices[vertex].out_edges.keys()) == 1) and (len(self.vertices[vertex].in_edges.keys()) == 0))
+                       or ((len(self.vertices[vertex].out_edges.keys()) == 0) and (len(self.vertices[vertex].in_edges.keys()) == 0))]
+        for vertex in self.to_cut:
+            if self.vertices[vertex].coverage <= baseline:
+                if len(self.vertices[vertex].out_edges.keys()) == 1:
+                    self.vertices[list(self.vertices[vertex].out_edges.keys())[0]].in_edges.pop(vertex)
+                if len(self.vertices[vertex].in_edges.keys()) == 1:
+                    self.vertices[list(self.vertices[vertex].in_edges.keys())[0]].out_edges.pop(vertex)
+
+                del self.vertices[vertex]
+
+
     def get_contigs(self, dest):
         i = 1
         contigs = []
@@ -138,7 +141,6 @@ class Graph:
                 for kk, vv in v.out_edges.items():
                        vis.edge(k, kk, label='cov={cov} len={len}'.format(cov=vv[0].edge_coverage, len=len(vv[0].seq)))
 
-        print(vis.source)
         vis.view()
         vis.save()
 
@@ -152,11 +154,12 @@ if __name__ == '__main__':
     parser.add_argument('-f', help='forward oriented assembly', dest='feature', action='store_true')
     parser.add_argument('-r', help='reverse complement oriented assembly', dest='feature', action='store_false')
     parser.add_argument('-c', help='Perform graph compression', action='store_true')
+    parser.add_argument('-b', help='Cutoff baseline value', default=100, type=int)
     parser.add_argument('-o', help='Set path to contig output', type=str, required=False)
     parser.set_defaults(feature=True)
 
     args = parser.parse_args()
-    i, k, t , c, o,  feature = args.i, args.k, args.t, args.c, args.o, args.feature
+    i, k, t , c, b, o,  feature = args.i, args.k, args.t, args.c, args.b, args.o, args.feature
     my_graph = Graph(k)
 
     with open(i, "r") as handle:
@@ -169,9 +172,10 @@ if __name__ == '__main__':
 
     my_graph.calc_init_edge_coverage()
     if args.c:
-        my_graph.compress()
+        while len(my_graph.vertices) > b:
+            my_graph.compress()
+            my_graph.cut(2)
         if args.o:
             my_graph.get_contigs(o)
 
     my_graph.visualize(t)
-
