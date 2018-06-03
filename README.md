@@ -16,8 +16,10 @@ The body holds three classes essential for graph assembly
 
 ### Compression
 Apart from two properties of **Edge** class, compression option comprises of two functions:
-+*function **merge***: allows joining of two vertices neighbouring over a redundant node. Works only if redundant node has ony one incoming and one outcoming edge;
-+*function **compress***: performs **merge** over all vertices meeting the "one in - one out" requirement.
++ *function **merge***: allows joining of two vertices neighbouring over a redundant node. Works only if redundant node has ony one incoming and one outcoming edge;
++ *function **compress***: performs **merge** over all vertices meeting the "one in - one out" requirement;
++ *function **cut***: a function for cutting of low-coverage marginal regions.
+Functions **compress** and **cut** a repeated sequentially in a cycle embodied in *argparse* ection of the code unless resulting number of vertices comes close to a chosen baseline.
 
 ### Contig obtaining
 *Function **get contigs*** provides opportunity to download resulting contigs as *fasta*-flavoured entries. The function is called automaticaly; if called via **-o** flag, it writes contigs into a *fasta* file
@@ -28,13 +30,14 @@ Arguments for command line go as following:
 + **-k**: a desired k (k-mer length); default is 3;
 + **-t**: if followed by 'full', draws a full graph with k-mers on vertices and read sequences on edges; if followed by any other random text, produces a stat graph with node and edge coverage
 + **-f** and **-r**: two alternative flags for assembly mode. If **-f** is stated, graph is assembled fron raw read sequences; if **-r** is chosen, graph is assemble from read reverse complements;
++ **-b**: a vertex number baseline for cutting off marginal vertices;
 + **-o**: a voluntary flag specifying the output location for compression results;
 + **function**: a none-flag variable for **t**/**r** alteration handling.
 
 ## Launch example
-The following command executes graph assembly from forward reads with k equal to 55 with compression performed:
+The following command executes graph assembly from forward reads with k equal to 55 and baseline of 15 with compression performed (see results in 3.fasta):
 ```{bash}
-python De_Bruijin_Compression.py -i hw3_dataset.fasta -c -f -k 55 -o 3.fasta
+python De_Bruijin_Compression.py -i hw3_dataset.fasta -c -f -k 55 -b -o 3.fasta
 ```
 Alternatively, this one will create a stat graph (by random text after **-t**) from reverse reads with k=10:
  ```{bash}
